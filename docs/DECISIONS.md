@@ -1,0 +1,93 @@
+# Decision log (ADRs)
+
+The *why* behind non-obvious choices, so future-you (and agents) don't relitigate
+settled calls. Newest at the top. Format: date · decision · context · consequences.
+Status: `Accepted` unless noted.
+
+---
+
+## ADR-0013 — Project harness: agent-maintained, Yarn-only, no formatter · 2026-09-21
+**Accepted.** The repo is maintained by AI agents. Package manager is **Yarn 1**
+(via Corepack); `yarn.lock` is committed and `package-lock.json`/npm are banned.
+**Prettier was removed** — no formatter in the loop. `CLAUDE.md`/`AGENTS.md` are the
+operating manual; CI (`.github/workflows/ci.yml`) runs `yarn check` (typecheck +
+lint + vitest) on push/PR. Consequence: the definition of done for any change is a
+green `yarn check`.
+
+## ADR-0012 — Hold breaking major upgrades · 2026-09-21
+**Accepted.** Everything is kept at the latest **within its major**. The remaining
+majors are held because they need a real build/preview to validate, which the
+maintenance harness can't do headlessly: `maplibre-gl` (v4 → v6 needs code changes),
+`next` 16, `typescript` 7, `eslint` 10 / `eslint-config-next` 16, `fit-file-parser`
+6, and `vitest` 5 (v5 makes `vite` a required peer — stay on v3). Upgrade them in a
+branch where the app runs.
+
+## ADR-0011 — Demo activity is real OSM road geometry · 2026-09-21
+**Accepted.** The demo (`lib/demo.ts`) is a ~9.7 km loop through central Belo
+Horizonte generated with **OSRM** over OpenStreetMap and decoded from its polyline —
+not a hand-drawn shape. Context: a synthetic circle read as fake. Elevation, HR and
+pacing are synthesised (route carries position only). To change it, route new
+waypoints through OSRM and embed the decoded coordinates.
+
+## ADR-0010 — Suunto DeviceLog JSON support · 2026-09-21
+**Accepted.** `.json` may be a Suunto/Movescount **DeviceLog** export: lat/lon in
+**radians** (×180/π), altitude in metres, HR in a separate **Hz** stream (×60 → bpm)
+merged by nearest timestamp. Handled in `parsers/geojson.ts` (`parseSuunto`,
+dispatched when `j.DeviceLog` exists) so `.json`/`.geojson` share one entry point.
+
+## ADR-0009 — Weather overlay via Open-Meteo (keyless) · 2026-09-20
+**Accepted.** Optional weather overlay fetched client-side from **Open-Meteo** (no
+API key) by the activity's coordinates + date + start hour; archive endpoint first,
+forecast fallback. Engine-side, keyed/guarded so it only hits the network when inputs
+change; fails silently (weather is optional). WMO codes → MDI icon + localized label.
+
+## ADR-0008 — i18n: PT-BR default, EN-US option; HUD localizes too · 2026-09-20
+**Accepted.** Portuguese (BR) is the default language, English selectable in the
+header menu. Both the app UI **and** the burned-in HUD/export text localize via
+`i18n` `tr(lang)`. Add new strings to the `Dict` interface and both `pt`/`en`.
+
+## ADR-0007 — Export is MP4 + PNG; WebM/share/manual-hour removed · 2026-09-21
+**Accepted.** User-facing export is **MP4** (WebCodecs H.264, internal WebM
+`MediaRecorder` fallback) or **PNG** (single 1080×1920 frame). The shareable-link
+feature, the WebM option, and the manual activity-hour picker were removed as
+scope-trimming — do not reintroduce without being asked.
+
+## ADR-0006 — Fly-in rotates toward a fixed heading · 2026-09-21
+**Accepted.** The intro/outro blend overview ↔ chase. The fly-in rotates toward ONE
+fixed target (`bearing(pos(0), pos(0.12))`), not the moving `headingAt(p)`. Context:
+a moving target makes `lerpAngle` re-pick the shortest path each frame and flip
+rotation direction mid-turn (CCW→CW). Hand-offs at p=0.12 / p=0.9 stay continuous in
+center, zoom, tilt and bearing.
+
+## ADR-0005 — Theme/accent change with the map, not before it · 2026-09-21
+**Accepted.** Chrome theme/accent follow the **map's** applied value. The engine
+reloads the style (MapLibre `setStyle` with `transformStyle` to carry route layers),
+recolors, then fires `onThemeApplied`/`onAccentApplied` from the map's `idle`;
+React's `appliedTheme`/`appliedAccent` (in `useFlyover`) drive `data-theme` and
+`--accent`. Compositing is deferred to `idle` so base tiles + route + HUD update in
+one frame. A **pre-paint inline script** in `layout.tsx` sets theme+accent from the
+URL before first paint (no flash); the load-time accent rule is mirrored there and in
+`useFlyover`. `<html>`/`<body>` carry `suppressHydrationWarning` because the script
+mutates them.
+
+## ADR-0004 — Theme-dependent default accent · 2026-09-21
+**Accepted.** On load the accent defaults to the theme's readable choice — green on
+dark, **orange on light** (green-on-light has poor contrast). A URL-supplied custom
+accent still wins; a stale "other theme's default" is snapped to the current theme's.
+
+## ADR-0003 — URL carries only theme/accent/lang · 2026-09-21
+**Accepted.** After the share feature was removed, `urlState` reads only `theme`,
+`accent`, `lang` from the URL (they drive the pre-paint default). All other settings
+use `DEFAULT_SETTINGS` on load, so a stale link can't override duration, fly-in, etc.
+
+## ADR-0002 — Client-only rendering · 2026-09-20
+**Accepted.** The whole studio depends on browser-only APIs (MapLibre GL, canvas,
+MediaRecorder, WebCodecs, File). It is loaded `dynamic(..., { ssr:false })`; no
+map/canvas/export code runs on the server.
+
+## ADR-0001 — React owns Settings, the engine owns everything imperative · 2026-09-20
+**Accepted.** React holds the user-editable `Settings` (single source of truth) and
+pushes them into `FlyoverEngine.updateSettings()`. The engine owns the map, canvas,
+animation, timing and export, and pushes read-only `DisplayState` back via callbacks
+(`onDisplay`, `onAdoptMeta`, `onThemeApplied`, `onAccentApplied`). Keeps the render
+loop off React's critical path while inputs stay declarative.
