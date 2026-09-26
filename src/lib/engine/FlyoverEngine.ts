@@ -25,7 +25,7 @@ import { parseActivityFile } from "../parsers";
 import { fetchWeather, type WeatherData } from "../weather";
 import { tr } from "../i18n";
 import { renderHud, drawEmpty } from "./hud";
-import { pickMime, sanitizeBase, downloadBlob } from "../export/recorder";
+import { pickMime, isAppleMobile, sanitizeBase, downloadBlob } from "../export/recorder";
 
 export interface EngineRefs {
   canvas: HTMLCanvasElement;
@@ -101,6 +101,9 @@ export class FlyoverEngine {
   private running = false;
   private weather: WeatherData | null = null;
   private weatherKey = "";
+  // Pre-rendered export from a preceding Play (see capturePlay).
+  private prepared: { blob: Blob; sig: string } | null = null;
+  private capturing = false;
   private mounted = false;
 
   private stats: Stats | null = null;
@@ -177,6 +180,13 @@ export class FlyoverEngine {
     const prev = this.settings;
     this.settings = next;
     if (!this.mounted) return;
+    // Any settings change invalidates a pre-render (and aborts one in progress).
+    if (this.capturing) {
+      this.cancelRun();
+      this.abortCapture();
+      this.disp({ playing: false });
+    }
+    this.invalidatePrepared();
 
     if (next.theme !== prev.theme) {
       this.swapMapStyle();
@@ -694,17 +704,78 @@ export class FlyoverEngine {
   togglePlay = (): void => {
     if (!this.hasData || this.recording) return;
     if (this.running) {
+      const wasCapturing = this.capturing;
       this.cancelRun();
+      if (wasCapturing) this.abortCapture(); // pausing a capture discards it
       this.disp({ playing: false });
+      return;
+    }
+    if (this.progress >= 1) this.progress = 0;
+    // A fresh MP4 play doubles as the export render: capture the frames now so a
+    // later "Export" downloads instantly with no second render. Any other play
+    // (seeked, or PNG format) is just a preview.
+    if (this.progress === 0 && this.settings.exportFormat === "mp4") {
+      void this.capturePlay();
     } else {
-      if (this.progress >= 1) this.progress = 0;
       this.startRun(this.progress, {});
     }
   };
 
+  private outputSig(): string {
+    const s = this.settings;
+    return JSON.stringify([
+      this.fileName,
+      s.sport,
+      s.accent,
+      s.theme,
+      s.overlays,
+      s.durationSec,
+      s.cameraPitch,
+      s.introOutro,
+      s.exportFormat,
+      s.athleteName,
+      s.location,
+    ]);
+  }
+
+  private invalidatePrepared(): void {
+    this.prepared = null;
+  }
+
+  /** Abort an in-flight capture play and unblock its awaiter. */
+  private abortCapture(): void {
+    if (!this.capturing) return;
+    this.capturing = false;
+    this.prepared = null;
+    const r = this.exportRes;
+    this.exportRes = null;
+    if (r) r();
+  }
+
+  /** Play the flyover once AND capture it, storing the blob for a later Export. */
+  private async capturePlay(): Promise<void> {
+    if (!this.hasData || this.recording || this.capturing) return;
+    const sig = this.outputSig();
+    if (isAppleMobile()) {
+      await this.exportViaMediaRecorder(true, undefined, { capture: true, sig });
+      return;
+    }
+    let codec: string | null = null;
+    try {
+      const { pickAvcCodec } = await import("../export/mp4");
+      codec = await pickAvcCodec(STAGE_W, STAGE_H, 9_000_000, EXPORT_FPS);
+    } catch {
+      codec = null;
+    }
+    if (codec) await this.exportViaWebCodecs(codec, { capture: true, sig });
+    else await this.exportViaMediaRecorder(true, undefined, { capture: true, sig });
+  }
+
   restart = (): void => {
     if (!this.hasData) return;
     this.cancelRun();
+    this.abortCapture();
+    this.invalidatePrepared();
     this.progress = 0;
     this.brg = null;
     this.disp({ playing: false });
@@ -715,6 +786,8 @@ export class FlyoverEngine {
     if (!this.hasData) return;
     const p = value / 1000;
     this.cancelRun();
+    this.abortCapture();
+    this.invalidatePrepared();
     this.progress = p;
     this.disp({ playing: false });
     this.renderOnce(p);
@@ -862,6 +935,7 @@ export class FlyoverEngine {
     this.stats = stats;
     this.weather = null;
     this.weatherKey = "";
+    this.invalidatePrepared();
     this.hasData = true;
     this.hint = 0;
     this.progress = 0;
@@ -934,9 +1008,22 @@ export class FlyoverEngine {
   };
 
   exportVideo = async (): Promise<void> => {
-    if (!this.hasData || this.recording) return;
+    if (!this.hasData || this.recording || this.capturing) return;
+    // Reuse a pre-render captured during a preceding Play when it still matches
+    // the current settings — instant, no second render.
+    if (this.prepared && this.prepared.sig === this.outputSig()) {
+      const base = sanitizeBase(
+        this.settings.athleteName || this.settings.sport || "activity",
+      );
+      const ext = this.prepared.blob.type.indexOf("mp4") >= 0 ? "mp4" : "webm";
+      downloadBlob(this.prepared.blob, `${base}-flyover.${ext}`);
+      return;
+    }
     const wantMp4 = this.settings.exportFormat === "mp4";
-    if (wantMp4) {
+    // iOS (all browsers are WebKit) has a flaky WebCodecs H.264 encoder but
+    // records H.264 MP4 natively via MediaRecorder — route straight there so it
+    // works and doesn't render twice (attempt + fallback).
+    if (wantMp4 && !isAppleMobile()) {
       let codec: string | null = null;
       try {
         const { pickAvcCodec } = await import("../export/mp4");
@@ -953,21 +1040,31 @@ export class FlyoverEngine {
   };
 
   /** MP4 via the browser's WebCodecs H.264 encoder — frames captured live. */
-  private async exportViaWebCodecs(codec: string): Promise<void> {
+  private async exportViaWebCodecs(
+    codec: string,
+    opts: { capture?: boolean; sig?: string } = {},
+  ): Promise<void> {
+    const cap = !!opts.capture;
     const cv = this.refs.canvas;
     this.cancelRun();
-    this.recording = true;
-    this.disp({
-      recording: true,
-      playing: false,
-      exportPct: 0,
-      exportStage: "Rendering frames",
-      error: null,
-    });
+    if (cap) this.capturing = true;
+    else this.recording = true;
+    this.disp(
+      cap
+        ? { playing: true, error: null }
+        : {
+            recording: true,
+            playing: false,
+            exportPct: 0,
+            exportStage: "Rendering frames",
+            error: null,
+          },
+    );
     this.progress = 0;
     this.brg = null;
     this.jumpOverview();
-    await this.awaitIdle(2600);
+    await this.awaitIdle(cap ? 1200 : 2600);
+    if (cap && !this.capturing) return; // aborted during idle
 
     const { Mp4FrameRecorder } = await import("../export/mp4");
     let recorder: InstanceType<typeof Mp4FrameRecorder>;
@@ -980,6 +1077,11 @@ export class FlyoverEngine {
         codec,
       });
     } catch {
+      if (cap) {
+        this.capturing = false;
+        this.disp({ playing: false });
+        return;
+      }
       this.recording = false;
       await this.exportViaMediaRecorder(
         true,
@@ -994,7 +1096,7 @@ export class FlyoverEngine {
       this.startRun(0, {
         record: true,
         onFrame: (elapsedMs) => {
-          if (frameErr) return;
+          if (frameErr || (cap && !this.capturing)) return;
           try {
             recorder.addFrame(cv, Math.round(elapsedMs * 1000));
           } catch (e) {
@@ -1003,19 +1105,36 @@ export class FlyoverEngine {
         },
       });
     });
+    if (cap && !this.capturing) {
+      recorder.abort();
+      this.disp({ playing: false });
+      return;
+    }
 
     const base = sanitizeBase(
       this.settings.athleteName || this.settings.sport || "activity",
     );
     try {
       if (frameErr) throw frameErr;
-      this.disp({ exportStage: "Finishing MP4" });
+      if (!cap) this.disp({ exportStage: "Finishing MP4" });
       const blob = await recorder.finish();
-      downloadBlob(blob, `${base}-flyover.mp4`);
-      this.recording = false;
-      this.disp({ recording: false, exportPct: 100, exportStage: "Done" });
-    } catch (err) {
+      if (cap) {
+        this.prepared = { blob, sig: opts.sig ?? this.outputSig() };
+        this.capturing = false;
+        this.disp({ playing: false });
+      } else {
+        downloadBlob(blob, `${base}-flyover.mp4`);
+        this.recording = false;
+        this.disp({ recording: false, exportPct: 100, exportStage: "Done" });
+      }
+    } catch {
       recorder.abort();
+      if (cap) {
+        this.capturing = false;
+        this.prepared = null;
+        this.disp({ playing: false });
+        return;
+      }
       this.recording = false;
       await this.exportViaMediaRecorder(
         true,
@@ -1024,43 +1143,62 @@ export class FlyoverEngine {
       return;
     }
 
-    setTimeout(() => this.disp({ exportPct: 0, exportStage: "" }), 1400);
+    if (!cap) setTimeout(() => this.disp({ exportPct: 0, exportStage: "" }), 1400);
     this.renderOnce(1);
   }
 
-  /** WebM via MediaRecorder (also native MP4 on Safari). The fallback path. */
+  /** WebM via MediaRecorder (also native MP4 on Safari/iOS). Fallback + capture. */
   private async exportViaMediaRecorder(
     wantedMp4: boolean,
     note?: string,
+    opts: { capture?: boolean; sig?: string } = {},
   ): Promise<void> {
+    const cap = !!opts.capture;
     const cv = this.refs.canvas;
-    const mime = pickMime();
+    const mime = pickMime(wantedMp4);
     if (!mime) {
+      if (cap) {
+        this.capturing = false;
+        this.disp({ playing: false });
+        return;
+      }
       this.recording = false;
       this.disp({
         recording: false,
-        error: "Video recording isn’t supported in this browser. Try Chrome or Edge.",
+        error:
+          "Video recording isn’t supported in this browser. Try Chrome or Edge.",
       });
       return;
     }
     this.cancelRun();
-    this.recording = true;
-    this.disp({
-      recording: true,
-      playing: false,
-      exportPct: 0,
-      exportStage: "Rendering frames",
-      error: null,
-    });
+    if (cap) this.capturing = true;
+    else this.recording = true;
+    this.disp(
+      cap
+        ? { playing: true, error: null }
+        : {
+            recording: true,
+            playing: false,
+            exportPct: 0,
+            exportStage: "Rendering frames",
+            error: null,
+          },
+    );
     this.progress = 0;
     this.brg = null;
     this.jumpOverview();
-    await this.awaitIdle(2600);
+    await this.awaitIdle(cap ? 1200 : 2600);
+    if (cap && !this.capturing) return;
 
     let stream: MediaStream;
     try {
       stream = cv.captureStream(EXPORT_FPS);
     } catch {
+      if (cap) {
+        this.capturing = false;
+        this.disp({ playing: false });
+        return;
+      }
       this.recording = false;
       this.disp({ recording: false, error: "Could not capture the canvas." });
       return;
@@ -1073,6 +1211,11 @@ export class FlyoverEngine {
         videoBitsPerSecond: 9_000_000,
       });
     } catch {
+      if (cap) {
+        this.capturing = false;
+        this.disp({ playing: false });
+        return;
+      }
       this.recording = false;
       this.disp({ recording: false, error: "Recorder init failed." });
       return;
@@ -1088,6 +1231,11 @@ export class FlyoverEngine {
     try {
       rec.start(120);
     } catch {
+      if (cap) {
+        this.capturing = false;
+        this.disp({ playing: false });
+        return;
+      }
       this.recording = false;
       this.disp({ recording: false, error: "Recorder could not start." });
       return;
@@ -1104,20 +1252,31 @@ export class FlyoverEngine {
       /* ignore */
     }
     await stopped;
+    if (cap && !this.capturing) {
+      this.disp({ playing: false });
+      return;
+    }
 
     const recordedMp4 = mime.indexOf("mp4") >= 0;
     const blob = new Blob(chunks, { type: mime });
     const base = sanitizeBase(
       this.settings.athleteName || this.settings.sport || "activity",
     );
-    downloadBlob(blob, `${base}-flyover.${recordedMp4 ? "mp4" : "webm"}`);
 
+    if (cap) {
+      this.prepared = { blob, sig: opts.sig ?? this.outputSig() };
+      this.capturing = false;
+      this.disp({ playing: false });
+      this.renderOnce(1);
+      return;
+    }
+
+    downloadBlob(blob, `${base}-flyover.${recordedMp4 ? "mp4" : "webm"}`);
     const fallbackNote =
       note ??
       (wantedMp4 && !recordedMp4
         ? "This browser can’t encode MP4 — saved a WebM. Try Chrome or Edge for MP4."
         : null);
-
     this.recording = false;
     this.disp({
       recording: false,

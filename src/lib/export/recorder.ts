@@ -1,12 +1,23 @@
-/** Pick the best supported MediaRecorder container/codec, or "" if none. */
-export function pickMime(): string {
+/** True on iPhone/iPad (all iOS browsers are WebKit under the hood). */
+export function isAppleMobile(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  const iOS = /iP(hone|ad|od)/.test(ua);
+  const iPadOS =
+    navigator.platform === "MacIntel" && (navigator.maxTouchPoints || 0) > 1;
+  return iOS || iPadOS;
+}
+
+/**
+ * Pick the best supported MediaRecorder container/codec, or "" if none.
+ * When `preferMp4` is set (the MP4 export fallback), try MP4 first — iOS WebKit
+ * records H.264 MP4 natively but has no WebM.
+ */
+export function pickMime(preferMp4 = false): string {
   if (typeof MediaRecorder === "undefined") return "";
-  const candidates = [
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8",
-    "video/webm",
-    "video/mp4",
-  ];
+  const mp4 = ["video/mp4;codecs=avc1", "video/mp4;codecs=h264", "video/mp4"];
+  const webm = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  const candidates = preferMp4 ? [...mp4, ...webm] : [...webm, ...mp4];
   for (const m of candidates) {
     try {
       if (MediaRecorder.isTypeSupported(m)) return m;
