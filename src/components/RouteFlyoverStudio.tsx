@@ -9,12 +9,16 @@ import Transport from "./Transport";
 import { LogoMark } from "./icons";
 import { tr } from "@/lib/i18n";
 import HeaderMenu from "./HeaderMenu";
+import ConsentBanner from "./ConsentBanner";
 
 export default function RouteFlyoverStudio() {
   const {
     settings,
     appliedTheme,
     appliedAccent,
+    consent,
+    grantConsent,
+    declineConsent,
     patch,
     toggleOverlay,
     display,
@@ -161,6 +165,13 @@ export default function RouteFlyoverStudio() {
           />
         </main>
       </div>
+      <ConsentBanner
+        lang={settings.lang}
+        accent={appliedAccent}
+        consent={consent}
+        onAccept={grantConsent}
+        onDecline={declineConsent}
+      />
     </div>
   );
 }

@@ -49,6 +49,7 @@ interface Dict {
     timeline: string;
   };
   empty: { title: string; formats: string; demo: string };
+  consent: { text: string; accept: string; decline: string };
   errors: { readFail: string };
   sportLabel: Record<Sport, string>;
   sportShort: Record<Sport, string>;
@@ -128,6 +129,11 @@ const pt: Dict = {
     title: "Solte uma atividade",
     formats: "GPX · GeoJSON · FIT · KML",
     demo: "ou carregue a demonstração",
+  },
+  consent: {
+    text: "Este site guarda apenas suas preferências de tema e cor de destaque neste navegador (armazenamento local). Nada de rastreamento.",
+    accept: "Aceitar",
+    decline: "Recusar",
   },
   errors: { readFail: "Não foi possível ler este arquivo." },
   sportLabel: {
@@ -239,6 +245,11 @@ const en: Dict = {
     title: "Drop an activity",
     formats: "GPX · GeoJSON · FIT · KML",
     demo: "or load the demo run",
+  },
+  consent: {
+    text: "This site stores only your theme and accent-color preference in this browser (local storage). No tracking.",
+    accept: "Accept",
+    decline: "Decline",
   },
   errors: { readFail: "Could not read this file." },
   sportLabel: {

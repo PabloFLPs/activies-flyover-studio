@@ -5,6 +5,14 @@ import { FlyoverEngine } from "@/lib/engine/FlyoverEngine";
 import type { DisplayState, ParsedMeta, Settings, Theme } from "@/lib/types";
 import { DEFAULT_SETTINGS, THEME_DEFAULT_ACCENT } from "@/lib/constants";
 import { readSettingsFromUrl } from "@/lib/urlState";
+import {
+  getConsent,
+  setConsent as persistConsent,
+  loadThemeAccent,
+  saveThemeAccent,
+  clearThemeAccent,
+  type Consent,
+} from "@/lib/persist";
 
 const INITIAL_DISPLAY: DisplayState = {
   ready: false,
@@ -35,20 +43,13 @@ export function useFlyover() {
   // ssr:false guarantees we're in the browser, so reading the URL here is safe.
   const [settings, setSettings] = useState<Settings>(() => {
     const fromUrl = readSettingsFromUrl();
-    const base = { ...DEFAULT_SETTINGS, ...fromUrl };
-    // On open/reload, keep the accent readable for the theme (orange on light,
-    // green on dark). With no accent in the URL, use that theme's default; if the
-    // URL carries the OTHER theme's default (e.g. a stale green from a copied
-    // light-theme link), snap it — green-on-light has poor contrast. A genuinely
-    // custom accent is preserved.
-    if (fromUrl.accent === undefined) {
-      base.accent = THEME_DEFAULT_ACCENT[base.theme];
-    } else {
-      const other = base.theme === "dark" ? "light" : "dark";
-      if (base.accent.toLowerCase() === THEME_DEFAULT_ACCENT[other].toLowerCase()) {
-        base.accent = THEME_DEFAULT_ACCENT[base.theme];
-      }
-    }
+    const stored = loadThemeAccent(); // {} unless the user granted consent
+    const base = { ...DEFAULT_SETTINGS };
+    // Precedence: URL param > locally-saved preference > default.
+    base.theme = fromUrl.theme ?? stored.theme ?? base.theme;
+    if (fromUrl.lang) base.lang = fromUrl.lang;
+    base.accent =
+      fromUrl.accent ?? stored.accent ?? THEME_DEFAULT_ACCENT[base.theme];
     return base;
   });
   const [display, setDisplay] = useState<DisplayState>(INITIAL_DISPLAY);
@@ -58,6 +59,21 @@ export function useFlyover() {
   // The accent the MAP/HUD has actually finished painting. The app chrome
   // follows this (not settings.accent) so page + map recolor together.
   const [appliedAccent, setAppliedAccent] = useState<string>(settings.accent);
+  // Cookie/storage consent (null until the user answers the banner).
+  const [consent, setConsentState] = useState<Consent>(() => getConsent());
+  // Persist the two cosmetic prefs whenever they change, once consent is granted.
+  useEffect(() => {
+    if (consent === "granted") saveThemeAccent(settings.theme, settings.accent);
+  }, [consent, settings.theme, settings.accent]);
+  const grantConsent = useCallback(() => {
+    persistConsent("granted");
+    setConsentState("granted");
+  }, []);
+  const declineConsent = useCallback(() => {
+    persistConsent("denied");
+    clearThemeAccent();
+    setConsentState("denied");
+  }, []);
 
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -136,6 +152,9 @@ export function useFlyover() {
     settings,
     appliedTheme,
     appliedAccent,
+    consent,
+    grantConsent,
+    declineConsent,
     setSettings,
     patch,
     toggleOverlay,

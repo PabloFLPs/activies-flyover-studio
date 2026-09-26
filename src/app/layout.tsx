@@ -40,7 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){try{var q=new URLSearchParams(location.search);var theme=q.get('theme');if(theme!=='light'&&theme!=='dark')theme='dark';var GREEN='#c8ff3d',ORANGE='#ff5a1f';var a=q.get('accent');if(a){a=(a.charAt(0)==='#'?a:'#'+a).toLowerCase();if(!/^#[0-9a-f]{6}$/.test(a))a=null;}if(!a){a=theme==='light'?ORANGE:GREEN;}else{var other=theme==='dark'?ORANGE:GREEN;if(a===other)a=theme==='dark'?GREEN:ORANGE;}var el=document.documentElement;el.setAttribute('data-theme',theme);el.style.setProperty('--accent',a);}catch(e){}})();",
+              "(function(){try{var q=new URLSearchParams(location.search);var GREEN='#c8ff3d',ORANGE='#ff5a1f';var st={};try{if(localStorage.getItem('rfs:consent')==='granted'){st.theme=localStorage.getItem('rfs:theme');st.accent=localStorage.getItem('rfs:accent');}}catch(e){}var theme=q.get('theme')||st.theme;if(theme!=='light'&&theme!=='dark')theme='dark';var a=q.get('accent')||st.accent;if(a){a=(a.charAt(0)==='#'?a:'#'+a).toLowerCase();if(!/^#[0-9a-f]{6}$/.test(a))a=null;}if(!a){a=theme==='light'?ORANGE:GREEN;}var el=document.documentElement;el.setAttribute('data-theme',theme);el.style.setProperty('--accent',a);}catch(e){}})();",
           }}
         />
       </head>
