@@ -55,6 +55,12 @@ export class Mp4FrameRecorder {
   private encoder: VideoEncoder;
   private error: unknown = null;
   private lastKeySec = -1;
+  // Some platforms (notably iOS Safari) don't attach `decoderConfig` to the very
+  // first encoded chunk, which makes mp4-muxer dereference a null colorSpace.
+  // Buffer chunks until a config arrives, then write the first with it.
+  private config: VideoDecoderConfig | null = null;
+  private pending: EncodedVideoChunk[] = [];
+  private wroteFirst = false;
 
   constructor(opts: Mp4RecorderOptions) {
     this.muxer = new Muxer({
@@ -69,7 +75,13 @@ export class Mp4FrameRecorder {
       firstTimestampBehavior: "offset",
     });
     this.encoder = new VideoEncoder({
-      output: (chunk, meta) => this.muxer.addVideoChunk(chunk, meta),
+      output: (chunk, meta) => {
+        try {
+          this.onChunk(chunk, meta);
+        } catch (e) {
+          this.error = e;
+        }
+      },
       error: (e) => {
         this.error = e;
       },
@@ -84,7 +96,39 @@ export class Mp4FrameRecorder {
     });
   }
 
-  /** Encode one frame from the canvas at the given timestamp (microseconds). */
+  private onChunk(
+    chunk: EncodedVideoChunk,
+    meta: EncodedVideoChunkMetadata | undefined,
+  ): void {
+    if (!this.config && meta?.decoderConfig) {
+      const dc: VideoDecoderConfig = { ...meta.decoderConfig };
+      if (!dc.colorSpace) {
+        // A sane default so the muxer never reads a null colorSpace.
+        dc.colorSpace = {
+          primaries: "bt709",
+          transfer: "bt709",
+          matrix: "bt709",
+          fullRange: false,
+        };
+      }
+      this.config = dc;
+    }
+    if (!this.config) {
+      this.pending.push(chunk); // config not here yet — hold the chunk
+      return;
+    }
+    if (!this.wroteFirst) {
+      const queue = this.pending.length ? [...this.pending, chunk] : [chunk];
+      this.pending = [];
+      this.muxer.addVideoChunk(queue[0], { decoderConfig: this.config });
+      this.wroteFirst = true;
+      for (let i = 1; i < queue.length; i++) this.muxer.addVideoChunk(queue[i]);
+      return;
+    }
+    this.muxer.addVideoChunk(chunk);
+  }
+
+    /** Encode one frame from the canvas at the given timestamp (microseconds). */
   addFrame(source: CanvasImageSource, tsMicros: number): void {
     if (this.error) throw this.error;
     const sec = Math.floor(tsMicros / 1_000_000);
@@ -98,6 +142,11 @@ export class Mp4FrameRecorder {
   async finish(): Promise<Blob> {
     await this.encoder.flush();
     if (this.error) throw this.error;
+    if (!this.wroteFirst) {
+      // The encoder never supplied a decoder configuration — can't mux a valid
+      // MP4. Let the caller fall back to the browser recorder.
+      throw new Error("no decoder configuration from the video encoder");
+    }
     this.muxer.finalize();
     try {
       this.encoder.close();

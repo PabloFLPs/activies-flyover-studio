@@ -983,7 +983,7 @@ export class FlyoverEngine {
       this.recording = false;
       await this.exportViaMediaRecorder(
         true,
-        "Couldn’t start the MP4 encoder. Saved a WebM instead.",
+        "The MP4 encoder isn’t available here — saved with your browser’s recorder instead.",
       );
       return;
     }
@@ -1019,9 +1019,7 @@ export class FlyoverEngine {
       this.recording = false;
       await this.exportViaMediaRecorder(
         true,
-        err instanceof Error
-          ? `MP4 encoding failed (${err.message}). Saved a WebM instead.`
-          : "MP4 encoding failed. Saved a WebM instead.",
+        "MP4 encoding failed on this device — saved with your browser’s recorder instead.",
       );
       return;
     }
