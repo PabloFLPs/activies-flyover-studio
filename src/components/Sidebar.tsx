@@ -123,7 +123,6 @@ export default function Sidebar({
       >
         <input
           type="file"
-          accept=".gpx,.geojson,.json,.fit,.kml"
           onChange={onFile}
           style={{ display: "none" }}
         />
