@@ -1,10 +1,35 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL
+    ? `https://${process.env.VERCEL_URL}`
+    : "http://localhost:3000");
+
+const DESCRIPTION =
+  "Turn a GPS activity (GPX, GeoJSON, FIT, KML or Suunto) into a cinematic 9:16 flyover video — entirely in your browser.";
+
+// og:image / twitter:image come from the app/opengraph-image.png file convention;
+// `metadataBase` makes their URLs absolute so WhatsApp/Slack/Twitter can fetch them.
+// Set NEXT_PUBLIC_SITE_URL to your deployed origin so the preview image resolves.
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Route Flyover Studio",
-  description:
-    "Turn a GPS activity (GPX, GeoJSON, FIT or KML) into a cinematic 9:16 flyover video — entirely in your browser.",
+  description: DESCRIPTION,
+  applicationName: "Route Flyover Studio",
+  openGraph: {
+    type: "website",
+    siteName: "Route Flyover Studio",
+    title: "Route Flyover Studio — cinematic flyover videos from your GPS activities",
+    description: DESCRIPTION,
+    locale: "pt_BR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Route Flyover Studio",
+    description: DESCRIPTION,
+  },
 };
 
 export const viewport: Viewport = {

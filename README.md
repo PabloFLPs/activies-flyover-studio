@@ -106,3 +106,5 @@ yarn check          # typecheck + lint + test (run before committing)
 ```
 
 Unit tests cover the pure logic — distance/format helpers, stats, the GeoJSON + Suunto parsers and the demo generator. Lint is `eslint-config-next`.
+
+Set `NEXT_PUBLIC_SITE_URL` to your deployed origin (e.g. `https://flyover.example.com`) so the link-share preview image (`src/app/opengraph-image.png`) resolves to an absolute URL for WhatsApp/Slack/Twitter.

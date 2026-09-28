@@ -9,6 +9,7 @@ it when a feature moves.
 - Page (renders the client studio) — `src/app/page.tsx`
 - Client-only entry (`dynamic(..., { ssr:false })` + loading cover) — `src/components/StudioClient.tsx`
 - Favicon — `src/app/icon.svg`
+- Link-share preview (Open Graph/Twitter image) — `src/app/opengraph-image.png` (auto-wired by Next's file convention); tags + `metadataBase` in `layout.tsx`
 
 ## UI (React chrome)
 - App shell: header, logo, map-ready loading cover, sidebar+stage layout — `src/components/RouteFlyoverStudio.tsx`
