@@ -32,3 +32,6 @@ next-env.d.ts.bak
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Cowork file-delivery scratch
+/Claude outputs/
