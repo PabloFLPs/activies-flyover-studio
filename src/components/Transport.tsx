@@ -18,7 +18,7 @@ const bar: CSSProperties = {
   background: "var(--app-bg)",
   display: "flex",
   alignItems: "center",
-  gap: 16,
+  gap: 18,
   flexWrap: "wrap",
 };
 
@@ -78,6 +78,7 @@ export default function Transport({
     background: canAct ? "var(--export-bg)" : "var(--disabled)",
     color: canAct ? "var(--export-fg)" : "#06070a",
     opacity: canAct ? 1 : 0.6,
+    flex: "0 0 auto",
   };
 
   return (
@@ -123,20 +124,21 @@ export default function Transport({
           style={{ flex: 1, minWidth: 120 }}
           aria-label={t.transport.timeline}
         />
-        <span
-          ref={refs.timeRef}
-          style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 13,
-            color: "var(--time)",
-            flex: "0 0 auto",
-            minWidth: 96,
-            textAlign: "right",
-          }}
-        >
-          0:00 / 0:00
-        </span>
       </div>
+
+      <span
+        ref={refs.timeRef}
+        style={{
+          fontFamily: "'IBM Plex Mono', monospace",
+          fontSize: 13,
+          color: "var(--time)",
+          flex: "0 0 auto",
+          minWidth: 96,
+          textAlign: "right",
+        }}
+      >
+        0:00 / 0:00
+      </span>
 
       <button
         onClick={() =>
