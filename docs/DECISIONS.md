@@ -6,6 +6,16 @@ Status: `Accepted` unless noted.
 
 ---
 
+## ADR-0014 — Weather uses the forecast model for recent dates; archive only for old ones · 2026-09-29
+**Accepted.** `fetchWeather` queries Open-Meteo's **forecast** endpoint first for any
+date within ~90 days (its past window) and only falls back to the **archive**
+(ERA5 reanalysis) for older dates. Context: ERA5 is coarse (~25 km) and
+over-reports light "drizzle" (code 51) in humid tropical climates like BH, so
+querying it first mislabelled clear runs. The forecast model's hourly
+`weather_code` is accurate for recent activities. Also: an empty Location is now
+prefilled by reverse-geocoding the start coordinate (BigDataCloud, keyless) —
+`lib/geocode.ts`; a user-typed location always wins.
+
 ## ADR-0013 — Project harness: agent-maintained, Yarn-only, no formatter · 2026-09-21
 **Accepted.** The repo is maintained by AI agents. Package manager is **Yarn 1**
 (via Corepack); `yarn.lock` is committed and `package-lock.json`/npm are banned.

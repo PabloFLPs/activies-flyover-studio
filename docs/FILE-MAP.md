@@ -44,7 +44,8 @@ it when a feature moves.
 - Formatting (clock, pace, km) — `src/lib/format.ts`
 - Load-time URL settings (theme/accent/lang only) — `src/lib/urlState.ts`
 - i18n (PT-BR default + EN-US; UI + HUD strings) — `src/lib/i18n.ts`
-- Weather (Open-Meteo, keyless; codes → icon/label) — `src/lib/weather.ts`
+- Weather (Open-Meteo, keyless; forecast model for recent dates) — `src/lib/weather.ts`
+- Reverse geocode for the start address (BigDataCloud, keyless) — `src/lib/geocode.ts`
 
 ## Tests / tooling
 - Unit tests (pure logic) — `src/lib/__tests__/*.test.ts`

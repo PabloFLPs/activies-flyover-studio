@@ -119,10 +119,13 @@ export async function fetchWeather(
     `latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
     `&hourly=temperature_2m,weather_code&timezone=auto` +
     `&start_date=${day}&end_date=${day}`;
-  const urls = [
-    `https://archive-api.open-meteo.com/v1/archive?${common}`,
-    `https://api.open-meteo.com/v1/forecast?${common}`,
-  ];
+  const forecast = `https://api.open-meteo.com/v1/forecast?${common}`;
+  const archive = `https://archive-api.open-meteo.com/v1/archive?${common}`;
+  // For recent dates use the FORECAST model — its hourly weather_code is accurate.
+  // The archive (ERA5 reanalysis) is coarse and over-reports light drizzle, so it
+  // is only used for older dates outside the forecast API's ~90-day past window.
+  const ageDays = (Date.now() - date.getTime()) / 86_400_000;
+  const urls = ageDays <= 90 ? [forecast, archive] : [archive, forecast];
   for (const url of urls) {
     try {
       const res = await fetch(url);
