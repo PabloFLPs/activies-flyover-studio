@@ -23,6 +23,7 @@ import { buildStats } from "../stats";
 import { buildDemo } from "../demo";
 import { parseActivityFile } from "../parsers";
 import { fetchWeather, type WeatherData } from "../weather";
+import { reverseGeocode } from "../geocode";
 import { tr } from "../i18n";
 import { renderHud, drawEmpty } from "./hud";
 import { pickMime, isAppleMobile, sanitizeBase, downloadBlob } from "../export/recorder";
@@ -979,6 +980,26 @@ export class FlyoverEngine {
     this.jumpOverview();
     this.renderOnce(0);
     this.maybeFetchWeather();
+    this.maybeFillLocation();
+  }
+
+  /** When the file/user gave no location, prefill it from the start address. */
+  private maybeFillLocation(): void {
+    if (this.settings.location || !this.stats) return;
+    const c = this.stats.coords[0];
+    if (!c) return;
+    const lang = this.settings.lang;
+    void reverseGeocode(c[1], c[0], lang).then((loc) => {
+      if (!loc || this.settings.location) return; // user typed one meanwhile
+      this.settings = { ...this.settings, location: loc };
+      this.cb.onAdoptMeta({
+        fileName: this.fileName,
+        sport: this.settings.sport,
+        athleteName: this.settings.athleteName,
+        location: loc,
+      });
+      this.staticRedraw();
+    });
   }
 
   // ---------- export ----------
