@@ -123,6 +123,7 @@ export class FlyoverEngine {
   private lastPct = -1;
   private pendingRoute = false;
   private exportRes: (() => void) | null = null;
+  private exportAborted = false;
 
   private ro: ResizeObserver | null = null;
   private onResize: (() => void) | null = null;
@@ -743,6 +744,16 @@ export class FlyoverEngine {
   }
 
   /** Abort an in-flight capture play and unblock its awaiter. */
+  /** Cancel an in-flight export (e.g. Restart pressed mid-render) and re-enable
+   * the controls. The export method's abort branch does the cleanup. */
+  private abortExport(): void {
+    if (!this.recording) return;
+    this.exportAborted = true;
+    const r = this.exportRes;
+    this.exportRes = null;
+    if (r) r();
+  }
+
   private abortCapture(): void {
     if (!this.capturing) return;
     this.capturing = false;
@@ -773,6 +784,10 @@ export class FlyoverEngine {
 
   restart = (): void => {
     if (!this.hasData) return;
+    if (this.recording) {
+      this.abortExport(); // don't leave the render stuck; re-enables Play/Export
+      return;
+    }
     this.cancelRun();
     this.abortCapture();
     this.invalidatePrepared();
@@ -1047,6 +1062,7 @@ export class FlyoverEngine {
     const cap = !!opts.capture;
     const cv = this.refs.canvas;
     this.cancelRun();
+    this.exportAborted = false;
     if (cap) this.capturing = true;
     else this.recording = true;
     this.disp(
@@ -1110,6 +1126,14 @@ export class FlyoverEngine {
       this.disp({ playing: false });
       return;
     }
+    if (this.exportAborted) {
+      recorder.abort();
+      this.recording = false;
+      this.exportAborted = false;
+      this.disp({ recording: false, playing: false, exportPct: 0, exportStage: "" });
+      this.renderOnce(this.progress);
+      return;
+    }
 
     const base = sanitizeBase(
       this.settings.athleteName || this.settings.sport || "activity",
@@ -1171,6 +1195,7 @@ export class FlyoverEngine {
       return;
     }
     this.cancelRun();
+    this.exportAborted = false;
     if (cap) this.capturing = true;
     else this.recording = true;
     this.disp(
@@ -1254,6 +1279,13 @@ export class FlyoverEngine {
     await stopped;
     if (cap && !this.capturing) {
       this.disp({ playing: false });
+      return;
+    }
+    if (this.exportAborted) {
+      this.recording = false;
+      this.exportAborted = false;
+      this.disp({ recording: false, playing: false, exportPct: 0, exportStage: "" });
+      this.renderOnce(this.progress);
       return;
     }
 
