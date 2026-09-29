@@ -98,7 +98,7 @@ export const DEFAULT_OVERLAYS: Overlays = {
 };
 
 export const DURATION_MIN = 6;
-export const DURATION_MAX = 30;
+export const DURATION_MAX = 60;
 export const PITCH_MIN = 0;
 export const PITCH_MAX = 70;
 
@@ -109,7 +109,7 @@ export const DEFAULT_SETTINGS: Settings = {
   theme: "dark",
   accent: "#C8FF3D",
   lang: "pt-BR",
-  durationSec: 15,
+  durationSec: 20,
   overlays: { ...DEFAULT_OVERLAYS },
   cameraPitch: 55,
   introOutro: true,
