@@ -12,7 +12,10 @@ date within ~90 days (its past window) and only falls back to the **archive**
 (ERA5 reanalysis) for older dates. Context: ERA5 is coarse (~25 km) and
 over-reports light "drizzle" (code 51) in humid tropical climates like BH, so
 querying it first mislabelled clear runs. The forecast model's hourly
-`weather_code` is accurate for recent activities. Also: an empty Location is now
+`weather_code` is accurate for recent activities. On top of that, Open-Meteo's
+`weather_code` reports light drizzle (51-67) even when precipitation is 0mm, so
+`fetchWeather` now also pulls `precipitation` + `cloud_cover` and demotes a wet
+code to a real sky condition (`resolveCode`) whenever it's actually dry. Also: an empty Location is now
 prefilled by reverse-geocoding the start coordinate (BigDataCloud, keyless) —
 `lib/geocode.ts`; a user-typed location always wins.
 

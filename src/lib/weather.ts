@@ -78,7 +78,39 @@ interface HourlyResp {
     time?: string[];
     temperature_2m?: (number | null)[];
     weather_code?: (number | null)[];
+    precipitation?: (number | null)[];
+    cloud_cover?: (number | null)[];
   };
+}
+
+/** True for WMO codes that claim drizzle/rain/showers. */
+function isWetCode(code: number): boolean {
+  return (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
+}
+
+/** A dry-sky WMO code derived from cloud cover (%). */
+function skyFromCloud(cloud: number | null): number {
+  if (cloud == null) return 2; // unknown -> partly cloudy
+  if (cloud < 20) return 0; // clear
+  if (cloud < 60) return 2; // partly cloudy
+  return 3; // overcast
+}
+
+/**
+ * Correct a WMO weather code against measured precipitation. Open-Meteo often
+ * reports a light drizzle/rain code even when precipitation is 0mm; when it is
+ * dry, swap that wet code for a real sky condition from cloud cover. Fog, snow
+ * and thunder codes are always kept. Exported for testing.
+ */
+export function resolveCode(
+  code: number,
+  precip: number | null,
+  cloud: number | null,
+): number {
+  if (isWetCode(code) && (precip == null || precip < 0.1)) {
+    return skyFromCloud(cloud);
+  }
+  return code;
 }
 
 function pickHour(json: HourlyResp, hour: number): WeatherData | null {
@@ -99,14 +131,19 @@ function pickHour(json: HourlyResp, hour: number): WeatherData | null {
   const t = h.temperature_2m[best];
   const c = h.weather_code[best];
   if (t == null || c == null) return null;
-  return { tempC: t, code: c };
+  // Open-Meteo's weather_code often reports light drizzle/rain (51-67) even when
+  // precipitation is 0mm. Trust the measured precipitation: if it's dry, replace
+  // the wet code with a real sky condition derived from cloud cover.
+  const precip = h.precipitation?.[best] ?? null;
+  const cloud = h.cloud_cover?.[best] ?? null;
+  return { tempC: t, code: resolveCode(c, precip, cloud) };
 }
 
 /**
  * Fetch the weather for a place, date and hour from Open-Meteo (keyless).
- * Tries the historical archive first, then the forecast API (which also covers
- * the recent past + near future), so both old and very recent activities work.
- * Returns null on any failure — callers treat weather as optional.
+ * Prefers the forecast model for recent dates (accurate hourly codes) and falls
+ * back to the ERA5 archive only for older activities. Returns null on any
+ * failure — callers treat weather as optional.
  */
 export async function fetchWeather(
   lat: number,
@@ -117,7 +154,7 @@ export async function fetchWeather(
   const day = dateKey(date);
   const common =
     `latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}` +
-    `&hourly=temperature_2m,weather_code&timezone=auto` +
+    `&hourly=temperature_2m,weather_code,precipitation,cloud_cover&timezone=auto` +
     `&start_date=${day}&end_date=${day}`;
   const forecast = `https://api.open-meteo.com/v1/forecast?${common}`;
   const archive = `https://archive-api.open-meteo.com/v1/archive?${common}`;
