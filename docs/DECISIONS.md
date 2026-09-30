@@ -6,6 +6,16 @@ Status: `Accepted` unless noted.
 
 ---
 
+## ADR-0016 — Opening overview is refit once the map is sized · 2026-09-29
+**Accepted.** `computeOverview` runs inside `setData`, which can fire before the
+MapLibre canvas has its real size; `cameraForBounds` then frames the wrong area
+and the route only slides into view partway through the fly-in. The fit is now
+trusted only when `mapReady`, and the first `idle` refits + re-jumps the
+overview (when still at the start, not playing) so the opening frame always
+contains the route. Framing was also tightened (padding 200/560/96, no extra
+zoom-out) so activities start closer and the fly-in isn't unnecessarily long.
+
+
 ## ADR-0015 — Manual weather override in the Identity panel · 2026-09-29
 **Accepted.** The Open-Meteo lookup is right most of the time but a coarse global
 model occasionally misses a same-day evening forecast (verified: it invented a

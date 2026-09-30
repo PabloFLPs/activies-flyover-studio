@@ -111,6 +111,8 @@ export class FlyoverEngine {
   private progress = 0;
   private overview: { center: [number, number]; zoom: number } | null = null;
   private bounds: LngLatBoundsLike | null = null;
+  /** True once the overview was fit with a sized map (else the first idle refits). */
+  private overviewFitted = false;
 
   private hint = 0;
   private brg: number | null = null;
@@ -374,6 +376,12 @@ export class FlyoverEngine {
         this.cb.onAccentApplied(this.settings.accent);
         return;
       }
+      if (this.hasData && this.stats && !this.overviewFitted) {
+        // The overview was computed before the map was sized; refit now that it
+        // is so the opening frame actually contains the route.
+        this.computeOverview();
+        if (!this.running && this.progress === 0) this.jumpOverview();
+      }
       if (this.hasData) this.renderOnce(this.progress);
       else this.drawEmptyState();
     });
@@ -502,15 +510,21 @@ export class FlyoverEngine {
       [minLng, minLat],
       [maxLng, maxLat],
     ];
+    this.overviewFitted = false;
     if (this.map) {
       try {
         const cam = this.map.cameraForBounds(this.bounds, {
-          padding: { top: 230, bottom: 640, left: 110, right: 110 },
+          padding: { top: 200, bottom: 560, left: 96, right: 96 },
           bearing: 0,
         });
         if (cam && cam.center) {
           const c = LngLat.convert(cam.center);
-          this.overview = { center: [c.lng, c.lat], zoom: (cam.zoom ?? 13) - 0.15 };
+          this.overview = { center: [c.lng, c.lat], zoom: cam.zoom ?? 13 };
+          // Only trust the fit once the map has been sized. Before that,
+          // cameraForBounds can frame the wrong area, so leave it "unfitted"
+          // and let the first "idle" refit it — otherwise the opening frames
+          // can show a spot the route isn't even on yet.
+          this.overviewFitted = this.mapReady;
         }
       } catch {
         /* fall through to bbox centre */
