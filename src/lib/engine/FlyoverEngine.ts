@@ -511,19 +511,30 @@ export class FlyoverEngine {
       [maxLng, maxLat],
     ];
     this.overviewFitted = false;
-    if (this.map) {
+    // The map container is sized in CSS px (STAGE / devicePixelRatio), so its
+    // viewport is ~960px tall on a 2x display, not 1920. Padding must therefore
+    // be a fraction of the ACTUAL viewport, otherwise fixed px values eat the
+    // whole frame on high-DPI screens and the route gets zoomed way out.
+    const canvas = this.map?.getCanvas();
+    const vw = canvas?.clientWidth ?? 0;
+    const vh = canvas?.clientHeight ?? 0;
+    if (this.map && vw > 0 && vh > 0) {
       try {
         const cam = this.map.cameraForBounds(this.bounds, {
-          padding: { top: 200, bottom: 560, left: 96, right: 96 },
+          padding: {
+            top: Math.round(vh * 0.08),
+            bottom: Math.round(vh * 0.3), // room for the HUD stats card
+            left: Math.round(vw * 0.08),
+            right: Math.round(vw * 0.08),
+          },
+          maxZoom: 15.5, // don't punch in to street level on a tiny activity
           bearing: 0,
         });
         if (cam && cam.center) {
           const c = LngLat.convert(cam.center);
           this.overview = { center: [c.lng, c.lat], zoom: cam.zoom ?? 13 };
-          // Only trust the fit once the map has been sized. Before that,
-          // cameraForBounds can frame the wrong area, so leave it "unfitted"
-          // and let the first "idle" refit it — otherwise the opening frames
-          // can show a spot the route isn't even on yet.
+          // Trust the fit only once the map is sized; otherwise the first
+          // "idle" refits it (see the idle handler).
           this.overviewFitted = this.mapReady;
         }
       } catch {

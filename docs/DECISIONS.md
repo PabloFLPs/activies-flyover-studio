@@ -12,8 +12,10 @@ MapLibre canvas has its real size; `cameraForBounds` then frames the wrong area
 and the route only slides into view partway through the fly-in. The fit is now
 trusted only when `mapReady`, and the first `idle` refits + re-jumps the
 overview (when still at the start, not playing) so the opening frame always
-contains the route. Framing was also tightened (padding 200/560/96, no extra
-zoom-out) so activities start closer and the fly-in isn't unnecessarily long.
+contains the route. Framing padding is a FRACTION of the actual map viewport (top 8%, bottom 30%
+for the HUD, sides 8%) rather than fixed px: the container is sized in CSS px
+(STAGE / devicePixelRatio), so fixed px ate most of the frame on 2x displays
+and zoomed the route far out. maxZoom 15.5 avoids punching in on tiny activities.
 
 
 ## ADR-0015 — Manual weather override in the Identity panel · 2026-09-29
