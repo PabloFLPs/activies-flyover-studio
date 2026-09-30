@@ -11,6 +11,7 @@ import {
 import { tr } from "@/lib/i18n";
 import { WEATHER_CONDITIONS, weatherLabel } from "@/lib/weather";
 import { DropIcon, PlayTriangle } from "./icons";
+import Select from "./Select";
 
 interface Props {
   settings: UseFlyover["settings"];
@@ -280,17 +281,17 @@ export default function Sidebar({
           <span style={{ fontSize: 12, color: "var(--sub)", flex: "0 0 auto" }}>
             {t.sidebar.sport}
           </span>
-          <select
+          <Select
             value={settings.sport}
-            onChange={(e) => patch({ sport: e.target.value as typeof settings.sport })}
-            style={{ ...textInput, flex: 1, padding: "9px 10px" }}
-          >
-            {SPORT_OPTIONS.map((sp) => (
-              <option key={sp.value} value={sp.value}>
-                {t.sportLabel[sp.value]}
-              </option>
-            ))}
-          </select>
+            onChange={(v) => patch({ sport: v as typeof settings.sport })}
+            accent={acc}
+            ariaLabel={t.sidebar.sport}
+            options={SPORT_OPTIONS.map((sp) => ({
+              value: sp.value,
+              label: t.sportLabel[sp.value],
+            }))}
+            style={{ flex: 1 }}
+          />
         </div>
         <button
           onClick={() => patch({ weatherManual: !settings.weatherManual })}
@@ -318,18 +319,17 @@ export default function Sidebar({
               aria-label={t.sidebar.weatherTempPlaceholder}
               style={{ ...textInput, flex: "0 0 40%" }}
             />
-            <select
-              value={settings.weatherCode}
-              onChange={(e) => patch({ weatherCode: +e.target.value })}
-              aria-label={t.sidebar.weatherCondition}
-              style={{ ...textInput, flex: 1, padding: "9px 10px" }}
-            >
-              {WEATHER_CONDITIONS.map((code) => (
-                <option key={code} value={code}>
-                  {weatherLabel(code, settings.lang)}
-                </option>
-              ))}
-            </select>
+            <Select
+              value={String(settings.weatherCode)}
+              onChange={(v) => patch({ weatherCode: +v })}
+              accent={acc}
+              ariaLabel={t.sidebar.weatherCondition}
+              options={WEATHER_CONDITIONS.map((code) => ({
+                value: String(code),
+                label: weatherLabel(code, settings.lang),
+              }))}
+              style={{ flex: 1 }}
+            />
           </div>
         )}
       </div>
