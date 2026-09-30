@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hav, bearing, lerp, lerpAngle, easeInOut, clamp } from "../geo";
+import { hav, bearing, lerp, lerpAngle, easeInOut, smootherstep, clamp } from "../geo";
 
 describe("hav", () => {
   it("is zero for the same point", () => {
@@ -27,6 +27,16 @@ describe("interpolation helpers", () => {
     expect(easeInOut(0)).toBe(0);
     expect(easeInOut(1)).toBe(1);
     expect(easeInOut(0.5)).toBeCloseTo(0.5, 6);
+  });
+
+  it("smootherstep is clamped, symmetric, flat at the ends", () => {
+    expect(smootherstep(0)).toBe(0);
+    expect(smootherstep(1)).toBe(1);
+    expect(smootherstep(-1)).toBe(0);
+    expect(smootherstep(2)).toBe(1);
+    expect(smootherstep(0.5)).toBeCloseTo(0.5, 6);
+    // near-zero slope at the start: tiny input -> much tinier output
+    expect(smootherstep(0.02)).toBeLessThan(0.001);
   });
   it("lerpAngle takes the short way around 0", () => {
     expect(lerpAngle(350, 10, 0.5)).toBeCloseTo(0, 6);

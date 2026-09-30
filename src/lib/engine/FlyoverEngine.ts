@@ -17,7 +17,7 @@ import type {
   TrackPoint,
 } from "../types";
 import { STAGE_W, STAGE_H, EXPORT_FPS, MAP_STYLES } from "../constants";
-import { bearing, easeInOut, lerp, lerpAngle } from "../geo";
+import { bearing, easeInOut, lerp, lerpAngle, smootherstep } from "../geo";
 import { fmtClock, fmtKm } from "../format";
 import { buildStats } from "../stats";
 import { buildDemo } from "../demo";
@@ -651,20 +651,24 @@ export class FlyoverEngine {
     if (io && p < 0.12) {
       // Fly in from the overview toward the chase camera at the CURRENT position
       // (not the start), so center/zoom/pitch land continuously at p=0.12.
-      const k = easeInOut(p / 0.12);
+      // smootherstep (quintic) has zero 1st AND 2nd derivative at both ends, so
+      // the hand-off carries no velocity or acceleration jump.
+      const k = smootherstep(p / 0.12);
       const g = chase(p);
-      // Rotate toward ONE fixed target — the fly-in's overall heading — instead
-      // of the moving headingAt(p). A moving target makes lerpAngle re-pick the
-      // shortest path each frame and flip rotation direction (CCW→CW) when the
-      // heading drifts across 180°. Seed brg so the follow continues smoothly.
-      const introHead = bearing(this.posAt(0.0001), this.posAt(0.12));
+      // Aim the fly-in at the heading the chase will actually HOLD at the
+      // hand-off (its instantaneous heading at 0.12, computed with the same
+      // forward step as headingAt), and seed brg to it. Then headingAt(0.12)
+      // reproduces exactly this angle, so there is no yaw kick when the chase
+      // takes over. A single fixed target also avoids lerpAngle flipping the
+      // rotation direction mid-fly-in.
+      const introHead = bearing(this.posAt(0.12), this.posAt(Math.min(1, 0.132)));
       this.brg = introHead;
       cam = this.blend(ov, g, k);
       cam.bearing = lerpAngle(ov.bearing, introHead, k);
     } else if (io && p > 0.9) {
       // Pull back to the overview from the chase at the current position, so the
       // start of the outro equals chase(0.9) — continuous the same way.
-      const k = easeInOut((p - 0.9) / 0.1);
+      const k = smootherstep((p - 0.9) / 0.1);
       cam = this.blend(chase(p), ov, k);
     } else {
       cam = chase(p);

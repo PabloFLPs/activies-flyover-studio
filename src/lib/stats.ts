@@ -173,8 +173,8 @@ export function buildStats(
     : null;
 
   const chaseZoom = Math.max(
-    13.0,
-    Math.min(15.9, 15.7 - 0.42 * Math.log2(Math.max(total, 700) / 700)),
+    12.7,
+    Math.min(15.6, 15.4 - 0.42 * Math.log2(Math.max(total, 700) / 700)),
   );
 
   return {
