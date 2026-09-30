@@ -18,6 +18,7 @@ it when a feature moves.
 - Stage (map div + export canvas) — `src/components/Stage.tsx`
 - Transport: play/restart/scrub + export (MP4/PNG dispatch) — `src/components/Transport.tsx`
 - Themed dropdown (custom <select> replacement) — `src/components/Select.tsx`
+- Clearable numeric text field — `src/components/NumberInput.tsx`
 - SVG icons — `src/components/icons.tsx`
 - React ↔ engine wiring, `appliedTheme`/`appliedAccent`, actions — `src/hooks/useFlyover.ts`
 

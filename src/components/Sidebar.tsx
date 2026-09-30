@@ -12,6 +12,7 @@ import { tr } from "@/lib/i18n";
 import { WEATHER_CONDITIONS, weatherLabel } from "@/lib/weather";
 import { DropIcon, PlayTriangle } from "./icons";
 import Select from "./Select";
+import NumberInput from "./NumberInput";
 
 interface Props {
   settings: UseFlyover["settings"];
@@ -311,12 +312,13 @@ export default function Sidebar({
         </button>
         {settings.weatherManual && (
           <div style={{ display: "flex", gap: 9 }}>
-            <input
-              type="number"
+            <NumberInput
               value={settings.weatherTempC}
-              onChange={(e) => patch({ weatherTempC: +e.target.value })}
+              onChange={(n) => patch({ weatherTempC: n })}
               placeholder={t.sidebar.weatherTempPlaceholder}
-              aria-label={t.sidebar.weatherTempPlaceholder}
+              ariaLabel={t.sidebar.weatherTempPlaceholder}
+              min={-60}
+              max={60}
               style={{ ...textInput, flex: "0 0 40%" }}
             />
             <Select
