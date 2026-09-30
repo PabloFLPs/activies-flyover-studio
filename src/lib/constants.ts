@@ -114,6 +114,9 @@ export const DEFAULT_SETTINGS: Settings = {
   cameraPitch: 55,
   introOutro: true,
   exportFormat: "mp4",
+  weatherManual: false,
+  weatherTempC: 20,
+  weatherCode: 0,
 };
 
 export const MAP_STYLES: Record<Settings["theme"], string> = {

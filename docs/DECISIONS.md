@@ -6,6 +6,16 @@ Status: `Accepted` unless noted.
 
 ---
 
+## ADR-0015 — Manual weather override in the Identity panel · 2026-09-29
+**Accepted.** The Open-Meteo lookup is right most of the time but a coarse global
+model occasionally misses a same-day evening forecast (verified: it invented a
+6pm shower + 8°C drop for a clear, dry BH run while the prior three days were
+accurate). Rather than chase the model, `Settings` gains `weatherManual` /
+`weatherTempC` / `weatherCode`: when on, the engine skips the fetch and renders
+the user's chosen temperature + condition (`WEATHER_CONDITIONS` picker). Auto
+stays the default; the override is the escape hatch.
+
+
 ## ADR-0014 — Weather uses the forecast model for recent dates; archive only for old ones · 2026-09-29
 **Accepted.** `fetchWeather` queries Open-Meteo's **forecast** endpoint first for any
 date within ~90 days (its past window) and only falls back to the **archive**

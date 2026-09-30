@@ -27,6 +27,9 @@ interface Dict {
     identity: string;
     athletePlaceholder: string;
     locationPlaceholder: string;
+    weatherManual: string;
+    weatherTempPlaceholder: string;
+    weatherCondition: string;
     sport: string;
     camera: string;
     tilt: string;
@@ -102,6 +105,9 @@ const pt: Dict = {
     identity: "Identidade",
     athletePlaceholder: "Nome do atleta",
     locationPlaceholder: "Local (ex.: Praça da Liberdade, BH)",
+    weatherManual: "Definir clima manualmente",
+    weatherTempPlaceholder: "Temperatura (°C)",
+    weatherCondition: "Condição",
     sport: "Esporte",
     camera: "Câmera",
     tilt: "Inclinação",
@@ -218,6 +224,9 @@ const en: Dict = {
     identity: "Identity",
     athletePlaceholder: "Athlete name",
     locationPlaceholder: "Location (e.g. Central Park, NY)",
+    weatherManual: "Set weather manually",
+    weatherTempPlaceholder: "Temperature (°C)",
+    weatherCondition: "Condition",
     sport: "Sport",
     camera: "Camera",
     tilt: "Tilt",

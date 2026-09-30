@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveCode, weatherLabel } from "../weather";
+import { resolveCode, weatherLabel, WEATHER_CONDITIONS } from "../weather";
 
 describe("resolveCode", () => {
   it("keeps a wet code when it actually rained", () => {
@@ -39,5 +39,13 @@ describe("resolveCode", () => {
     expect(resolveCode(51, 3.0, 100)).toBe(65); // heavy rain
     expect(resolveCode(51, 0.8, 100)).toBe(61); // rain
     expect(resolveCode(2, 0.2, 100)).toBe(51); // trace precip -> drizzle
+  });
+});
+
+describe("WEATHER_CONDITIONS", () => {
+  it("offers a non-empty set of distinctly-labelled conditions", () => {
+    expect(WEATHER_CONDITIONS.length).toBeGreaterThan(5);
+    const labels = WEATHER_CONDITIONS.map((c) => weatherLabel(c, "pt-BR"));
+    expect(new Set(labels).size).toBe(WEATHER_CONDITIONS.length);
   });
 });

@@ -53,6 +53,10 @@ export interface Settings {
   cameraPitch: number; // 0..70 degrees
   introOutro: boolean;
   exportFormat: ExportFormat;
+  /** Manual weather override — bypass the Open-Meteo lookup when it's wrong. */
+  weatherManual: boolean;
+  weatherTempC: number;
+  weatherCode: number; // WMO code chosen from a fixed condition list
 }
 
 /** Pre-computed track statistics used by the render loop. */

@@ -64,6 +64,12 @@ export function weatherLabel(code: number, lang: Lang): string {
   return tr(lang).weather[group(code)];
 }
 
+/**
+ * Conditions offered in the manual weather picker — one representative WMO code
+ * per visual group, in a natural order. Labels come from weatherLabel().
+ */
+export const WEATHER_CONDITIONS: number[] = [0, 2, 3, 45, 53, 61, 65, 80, 95, 71];
+
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }

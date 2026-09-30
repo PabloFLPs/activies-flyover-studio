@@ -9,6 +9,7 @@ import {
   SPORT_OPTIONS,
 } from "@/lib/constants";
 import { tr } from "@/lib/i18n";
+import { WEATHER_CONDITIONS, weatherLabel } from "@/lib/weather";
 import { DropIcon, PlayTriangle } from "./icons";
 
 interface Props {
@@ -291,6 +292,46 @@ export default function Sidebar({
             ))}
           </select>
         </div>
+        <button
+          onClick={() => patch({ weatherManual: !settings.weatherManual })}
+          style={{
+            ...seg(settings.weatherManual),
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 12px",
+          }}
+        >
+          <span>{t.sidebar.weatherManual}</span>
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>
+            {settings.weatherManual ? t.on : t.off}
+          </span>
+        </button>
+        {settings.weatherManual && (
+          <div style={{ display: "flex", gap: 9 }}>
+            <input
+              type="number"
+              value={settings.weatherTempC}
+              onChange={(e) => patch({ weatherTempC: +e.target.value })}
+              placeholder={t.sidebar.weatherTempPlaceholder}
+              aria-label={t.sidebar.weatherTempPlaceholder}
+              style={{ ...textInput, flex: "0 0 40%" }}
+            />
+            <select
+              value={settings.weatherCode}
+              onChange={(e) => patch({ weatherCode: +e.target.value })}
+              aria-label={t.sidebar.weatherCondition}
+              style={{ ...textInput, flex: 1, padding: "9px 10px" }}
+            >
+              {WEATHER_CONDITIONS.map((code) => (
+                <option key={code} value={code}>
+                  {weatherLabel(code, settings.lang)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div style={divider} />

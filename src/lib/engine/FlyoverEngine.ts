@@ -246,6 +246,18 @@ export class FlyoverEngine {
    */
   private maybeFetchWeather(): void {
     if (!this.hasData || !this.stats || !this.settings.overlays.weather) return;
+    // Manual override: the user set the weather by hand (model was wrong).
+    if (this.settings.weatherManual) {
+      const key = `manual,${this.settings.weatherTempC},${this.settings.weatherCode}`;
+      if (key === this.weatherKey) return;
+      this.weatherKey = key;
+      this.weather = {
+        tempC: this.settings.weatherTempC,
+        code: this.settings.weatherCode,
+      };
+      if (!this.running) this.renderOnce(this.progress);
+      return;
+    }
     const c = this.stats.coords[0];
     if (!c) return;
     const lat = c[1];
