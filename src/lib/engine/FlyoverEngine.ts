@@ -986,7 +986,11 @@ export class FlyoverEngine {
     });
 
     const athleteName = meta.name || this.settings.athleteName;
-    const location = meta.location != null ? meta.location : this.settings.location;
+    // Location belongs to the activity, not the user: a new file uses the file's
+    // own location if it has one, otherwise resets to empty so maybeFillLocation
+    // re-derives it from the start address — never carries the previous
+    // activity's (e.g. the demo's) location forward.
+    const location = meta.location != null ? meta.location : "";
     const fileName = meta.fileName || this.fileName || "activity";
 
     this.stats = stats;
