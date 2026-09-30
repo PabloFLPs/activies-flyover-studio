@@ -83,11 +83,6 @@ interface HourlyResp {
   };
 }
 
-/** True for WMO codes that claim drizzle/rain/showers. */
-function isWetCode(code: number): boolean {
-  return (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
-}
-
 /** A dry-sky WMO code derived from cloud cover (%). */
 function skyFromCloud(cloud: number | null): number {
   if (cloud == null) return 2; // unknown -> partly cloudy
@@ -107,10 +102,18 @@ export function resolveCode(
   precip: number | null,
   cloud: number | null,
 ): number {
-  if (isWetCode(code) && (precip == null || precip < 0.1)) {
-    return skyFromCloud(cloud);
-  }
-  return code;
+  // Trust the model for these distinctive states.
+  if (code === 45 || code === 48) return code; // fog
+  if ((code >= 71 && code <= 77) || code === 85 || code === 86) return code; // snow
+  if (code >= 95) return code; // thunder
+  // For everything else, classify by MEASURED precipitation rather than the
+  // weather_code, which fires drizzle/rain even at 0mm. This is what stops a
+  // clear, dry run from being labelled "drizzle".
+  const p = precip ?? 0;
+  if (p >= 2.5) return 65; // heavy rain
+  if (p >= 0.5) return 61; // rain
+  if (p >= 0.1) return 51; // genuine light drizzle
+  return skyFromCloud(cloud); // dry -> sky by cloud cover
 }
 
 function pickHour(json: HourlyResp, hour: number): WeatherData | null {

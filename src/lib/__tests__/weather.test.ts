@@ -34,4 +34,10 @@ describe("resolveCode", () => {
     expect(resolveCode(95, 0, 100)).toBe(95); // thunder
     expect(resolveCode(0, 0, 0)).toBe(0); // already clear
   });
+
+  it("classifies by measured precipitation amount", () => {
+    expect(resolveCode(51, 3.0, 100)).toBe(65); // heavy rain
+    expect(resolveCode(51, 0.8, 100)).toBe(61); // rain
+    expect(resolveCode(2, 0.2, 100)).toBe(51); // trace precip -> drizzle
+  });
 });
