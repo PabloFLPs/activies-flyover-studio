@@ -346,7 +346,7 @@ export function buildDemo(): DemoActivity {
     points: pts,
     sport: "running",
     fileName: "belo-horizonte-run.gpx",
-    athleteName: "Pablo FELPs",
+    athleteName: "Atleta Demo",
     location: "Centro & Savassi, Belo Horizonte",
   };
 }
